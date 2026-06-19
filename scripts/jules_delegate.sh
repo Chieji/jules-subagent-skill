@@ -5,19 +5,24 @@
 set -e
 
 DESC="$1"
+REPO="${2:-Chieji/jules-subagent-skill}"  # Default to your repo
 WORK_DIR="/var/minis/workspace/jules_work"
 mkdir -p "$WORK_DIR"
 
 # Validate input
 if [ -z "$DESC" ]; then
     echo "❌ Error: No task description provided"
-    echo "Usage: jules_delegate.sh \"your task here\""
+    echo "Usage: jules_delegate.sh \"your task here\" [owner/repo]"
+    echo "Example: jules_delegate.sh \"write a function\" Chieji/myrepo"
     exit 1
 fi
 
-# Step 1: Create session
-echo "🚀 Creating Jules session for: $DESC"
-OUTPUT=$(jules new "$DESC" 2>&1)
+# Step 1: Create session using --repo flag
+echo "🚀 Creating Jules session..."
+echo "   Task: $DESC"
+echo "   Repo: $REPO"
+
+OUTPUT=$(jules new --repo "$REPO" "$DESC" 2>&1)
 
 # Extract session ID (format: "Created session 1234567")
 SID=$(echo "$OUTPUT" | grep -oE '[0-9]{7,}' | head -n1)
