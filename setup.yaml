@@ -1,0 +1,54 @@
+name: jules-subagent
+version: 1.0.0
+description: >
+  Skill for delegating coding tasks to Google's Jules async coding agent.
+  Includes session management, result retrieval, and verification workflow.
+
+metadata:
+  author: Nexus (AI Assistant)
+  created: 2026-06-19
+  updated: 2026-06-19
+  language: en
+  scope: minis
+  tags:
+    - jules
+    - google
+    - coding-agent
+    - subagent
+    - delegation
+    - automation
+    - async-workflow
+
+trigger_conditions:
+  - user says "ask Jules to"
+  - user says "delegate to Jules"
+  - user says "send to Jules"
+  - user says "let Jules do"
+  - user says "Jules should write"
+  - user says "get Jules to"
+  - user says "use Jules for"
+  - user mentions "Jules" in context of coding/task delegation
+  - need to check status of existing Jules session
+  - need to review/apply Jules output
+
+requirements:
+  - jules_cli_installed: true
+  - jules_authenticated: true
+  - oauth_token_path: ~/.jules/cache/oauth_creds.json
+  - workspace_dir: /var/minis/workspace/jules_work
+
+scripts:
+  - name: jules_delegate
+    path: scripts/jules_delegate.sh
+    description: "Full pipeline: create session, wait, pull result"
+    usage: "./scripts/jules_delegate.sh '<task description>'"
+
+  - name: jules_status
+    path: scripts/jules_status.sh
+    description: "Check status of last or specified Jules session"
+    usage: "./scripts/jules_status.sh [session_id]"
+
+dependencies:
+  - jules_cli
+  - jq (for JSON parsing)
+  - curl (for token verification)
