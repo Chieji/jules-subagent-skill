@@ -1,172 +1,165 @@
----
-name: jules-subagent
-version: 1.0.0
-description: >
-  Use when the user wants to delegate coding tasks to Jules (Google's async coding agent).
-  Trigger on: 'ask Jules', 'delegate to Jules', 'send to Jules', 'let Jules do X',
-  'Jules should write...', 'use Jules', 'get Jules to...', or any request involving
-  Jules as a sub-agent or coding assistant. Handles session creation, monitoring,
-  result retrieval, verification, and integration back into the workflow.
-metadata:
-  author: Nexus (AI Assistant)
-  created: 2026-06-19
-  language: en
-  scope: minis
-  tags: [jules, google, coding-agent, subagent, delegation, automation]
----
-
 # Jules Sub-Agent Skill
 
-## Overview
+Delegate coding tasks to Google's Jules async coding agent with full workflow automation.
 
-This skill enables delegation of coding tasks to **Jules** — Google's asynchronous coding agent — with full visibility, review, and verification before integration.
+## Description
 
-## When to Trigger
+This skill enables Minis to delegate software development tasks to Google Jules, manage the async workflow, and ensure code quality through review-before-apply verification. Jules handles the actual coding while Minis orchestrates the delegation, tracks progress, and safeguards against automatic deployment of unverified code.
 
-- User says: *"Ask Jules to..."*, *"Delegate to Jules..."*, *"Let Jules handle..."*
-- User says: *"Jules should write..."*, *"Get Jules to..."*, *"Use Jules for..."*
-- Any request to use Jules as a sub-agent
-- Need to check status of existing Jules session
-- Need to review/apply Jules output
+## Trigger Conditions
+
+The skill activates when user input contains ANY of these patterns:
+
+| Priority | Trigger Phrase | Example |
+|----------|----------------|---------|
+| **P1** | "ask Jules to" | "Ask Jules to write a React component" |
+| **P1** | "delegate to Jules" | "Delegate the API integration to Jules" |
+| **P1** | "let Jules handle" | "Let Jules handle the error handling" |
+| **P2** | "Jules should write" | "Jules should write the database schema" |
+| **P2** | "get Jules to" | "Get Jules to fix the bug" |
+| **P2** | "use Jules for" | "Use Jules for the frontend work" |
+| **P3** | "what did Jules do" | "What did Jules do on the login task?" |
+| **P3** | "check Jules" | "Check Jules' progress" |
+| **P3** | "apply Jules'" | "Apply Jules' changes to main" |
 
 ## Workflow
 
-### Step 1: Create Session
+### Full Delegation Cycle
 
-```bash
-jules new "<task description>"
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│ 1. CREATE       │───▶│ 2. WAIT         │───▶│ 3. PULL         │
+│ jules new --repo│    │ Poll every 10s  │    │ jules remote    │
+│ "task"          │    │ until finished  │    │ pull --session  │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │
+         ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│ 6. FINALIZE     │◀───│ 5. APPLY        │◀───│ 4. REVIEW       │
+│ Report results  │    │ User approves:  │    │ Present patch   │
+│ Update memory   │    │ git apply patch │    │ Wait for OK     │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-Capture the session ID from the output.
+### Command Reference
 
-### Step 2: Store Session ID
+| Command | Purpose | Example |
+|---------|---------|---------|
+| `jules new --repo <repo> "task"` | Create session | `jules new --repo user/repo "write tests"` |
+| `jules remote list --session` | List all sessions | Check status of all tasks |
+| `jules remote status --session <ID>` | Check specific session | Get detailed progress |
+| `jules remote tail --session <ID>` | Stream live logs | Watch Jules work in real-time |
+| `jules remote pull --session <ID>` | Download result | Get the generated code |
+| `jules remote pull --session <ID> --apply` | Pull and auto-apply | ⚠️ **DANGEROUS - Never use** |
 
-```bash
-mkdir -p /var/minis/workspace/jules_work
-echo "<SESSION_ID>" > /var/minis/workspace/jules_work/last_session.txt
-```
+## Critical Rules
 
-### Step 3: Wait for Completion
+### 🚫 NEVER Auto-Apply
+- **ALWAYS** present the patch to the user first
+- **ALWAYS** wait for explicit approval before applying
+- **ALWAYS** run verification after applying
 
-Poll until the session is finished:
+### ✅ Required Verification
+Before reporting success:
+1. Check patch contents are reasonable (no malicious code)
+2. Verify syntax if applicable (shellcheck for bash, python -m py_compile for Python, etc.)
+3. Confirm file paths match expected structure
+4. Report any errors or warnings found
 
-```bash
-jules remote list --session | grep "<SESSION_ID>"
-```
-
-Or use the helper script (see Scripts).
-
-### Step 4: Pull Result
-
-```bash
-jules remote pull --session <SESSION_ID> > /var/minis/workspace/jules_work/jules_<ID>.patch
-```
-
-### Step 5: Verify Before Integration
-
-**ALWAYS review the patch before applying.** Never auto-apply without checking.
-
-#### Verification Checklist:
-1. Read the patch content
-2. Check what files are modified/created
-3. Look for security issues (evals, shell exec, hardcoded secrets)
-4. Run any relevant tests if available
-5. Apply only when satisfied
-
-```bash
-# Preview the patch
-cat /var/minis/workspace/jules_work/jules_<ID>.patch
-
-# Apply if approved
-git apply /var/minis/workspace/jules_work/jules_<ID>.patch
-```
-
-### Step 6: Report Back
-
-Summarize for the user:
-- What Jules was asked to do
-- What was produced (files, changes)
-- Verification status (tested/pending review)
-- Any issues found
+### 📋 Error Handling
+If Jules fails or produces errors:
+1. Capture the full error message
+2. Analyze root cause
+3. Present to user with options:
+   - Retry with clearer instructions
+   - Escalate to Minis for manual handling
+   - Log failure and abort
 
 ## Scripts
 
 ### jules_delegate.sh
-
-**Path:** `scripts/jules_delegate.sh`
-
-Handles the full delegate-wait-pull pipeline.
-
-**Usage:**
+Main delegation pipeline. Usage:
 ```bash
-./scripts/jules_delegate.sh "write a Python function to validate emails"
+jules_delegate.sh "write a Python function to parse JSON" [owner/repo]
 ```
 
-**Actions:**
-1. Creates Jules session
-2. Saves session ID to `jules_work/last_session.txt`
-3. Polls until finished (10s intervals)
-4. Pulls patch to `jules_work/jules_<ID>.patch`
-5. Reports completion status
+Features:
+- Automatic `--repo` flag handling
+- Session ID tracking
+- Polled completion waiting
+- Patch extraction and reporting
+- Colorized output with progress indicators
 
 ### jules_status.sh
-
-**Path:** `scripts/jules_status.sh`
-
-Quick status check for the last (or specified) session.
-
-**Usage:**
+Quick status checker. Usage:
 ```bash
-./scripts/jules_status.sh          # check last session
-./scripts/jules_status.sh 1234567  # check specific session
+jules_status.sh              # Check last session
+jules_status.sh --last       # Same as above
+jules_status.sh <ID>         # Check specific session
+jules_status.sh --help       # Show usage
 ```
 
-## Important Rules
+## Examples
 
-### ALWAYS Verify Before Applying
-> **Critical:** Never blindly apply Jules output. Review it first.
+### Example 1: Simple Function
+```
+User: "Ask Jules to write a Python function that validates email addresses"
 
-### Do Not Auto-Apply
-- `jules remote pull --session <ID> --apply` is **forbidden** unless user explicitly requests it
-- Default is: pull → review → user approves → apply
+Minis:
+  jules_delegate.sh "write a Python function that validates email addresses" Chieji/myrepo
+  → Session 1234567 created
+  → Polling every 10s...
+  → Completed in 3m 12s
+  → Patch saved to jules_work/jules_1234567.patch
 
-### Track Delegated Work
-- Store session IDs in `/var/minis/workspace/jules_work/`
-- Keep patches for reference
-- Note what task each session was for
+Minis: [presents patch contents]
 
-## Error Handling
+Minis: "Ready to apply? (yes/no/review)"
+```
 
-| Issue | Resolution |
-|-------|-----------|
-| `jules new` fails | Check `jules login` status and OAuth token |
-| Session never finishes | Run `jules remote list --session` to check |
-| Pull is empty | Session may still be running or failed |
-| Patch fails to apply | Manual review needed; may need to retry with clearer instructions |
+### Example 2: Complex Task with Custom Repo
+```
+User: "Use Jules to build the authentication module in my webapp"
 
-## Integration with Minis
+Minis:
+  jules_delegate.sh "build authentication module with login, signup, JWT handling" Chieji/webapp
+  → Session 7654321 created
+  → Polling every 10s...
+  → Completed in 8m 45s
+  → Patch: 3 files changed, 156 insertions(+)
 
-| User Request | Action |
-|-------------|--------|
-| "Ask Jules to..." | Run `jules_delegate.sh` |
-| "What did Jules do?" | Read `last_session.txt`, show status |
-| "Check Jules' work" | Pull and review the patch |
-| "Apply Jules' changes" | Review first, then apply if clean |
-| "Jules messed up" | Log issue, possibly retry with clearer instructions |
+Minis: [shows summary of changes]
 
-## Quick Reference
+Minis: "The changes look good. Apply now?"
+```
 
-| Command | Purpose |
-|---------|---------|
-| `jules new "task"` | Create new session |
-| `jules remote list --session` | List all sessions |
-| `jules remote status --session <ID>` | Check session status |
-| `jules remote pull --session <ID>` | Get patch output |
-| `jules remote pull --session <ID> --apply` | ⚠️ Auto-apply (skip review) |
-| `jules teleport <ID>` | Clone repo + checkout + apply |
+### Example 3: Checking Status
+```
+User: "What did Jules do on the API task?"
+
+Minis:
+  jules_status.sh
+  → Session 5555555: Completed 2m ago
+  → Duration: 4m 30s
+  → Patch available
+
+Minis: "Jules finished! The patch is ready for review."
+```
+
+## Repository
+
+- **GitHub**: https://github.com/Chieji/jules-subagent-skill
+- **License**: MIT
+- **Version**: 1.0.0
 
 ## Requirements
 
 - `jules` CLI installed and authenticated
-- Valid OAuth token at `~/.jules/cache/oauth_creds.json`
-- `/var/minis/workspace/jules_work/` directory exists
+- GitHub account with Jules access
+- Active repository connected to Jules
+
+## See Also
+
+- [README.md](README.md) - Installation and quick start
+- [CHANGELOG.md](CHANGELOG.md) - Version history
+- [tests/](tests/) - Test suite

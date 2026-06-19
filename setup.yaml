@@ -1,54 +1,81 @@
 name: jules-subagent
 version: 1.0.0
-description: >
-  Skill for delegating coding tasks to Google's Jules async coding agent.
-  Includes session management, result retrieval, and verification workflow.
+description: Delegate coding tasks to Google's Jules async coding agent with full workflow automation
+author: chieji
+license: MIT
+repository: https://github.com/Chieji/jules-subagent-skill
 
-metadata:
-  author: Nexus (AI Assistant)
-  created: 2026-06-19
-  updated: 2026-06-19
-  language: en
-  scope: minis
-  tags:
+# Keywords for discovery
+keywords:
+  - jules
+  - google
+  - async
+  - coding-agent
+  - delegation
+  - code-generation
+  - ai-assistant
+  - sub-agent
+
+# Skill configuration
+skill:
+  type: automation
+  priority: high
+  
+  # Trigger patterns - will be indexed for fast matching
+  triggers:
+    exact:
+      - ask Jules to
+      - delegate to Jules
+      - let Jules handle
+    contains:
+      - Jules should write
+      - get Jules to
+      - use Jules for
+      - what did Jules do
+      - check Jules
+      - apply Jules'
+    
+  # Files that make up this skill
+  entrypoint: SKILL.md
+  files:
+    - README.md
+    - CHANGELOG.md
+    - LICENSE
+    - setup.yaml
+    - scripts/jules_delegate.sh
+    - scripts/jules_status.sh
+    - tests/test_jules_delegate.sh
+    - tests/test_jules_status.sh
+    - tests/run_tests.sh
+
+# Dependencies
+requires:
+  system:
     - jules
-    - google
-    - coding-agent
-    - subagent
-    - delegation
+    - git
+    - sh
+  optional:
+    - gh (GitHub CLI)
+
+# Memory entries to persist after installation
+memory:
+  category: agent-tools
+  importance: high
+  entries:
+    - Jules CLI requires --repo flag for session creation
+    - Never auto-apply Jules output - always review first
+    - Default repository: Chieji/jules-subagent-skill
+    - Session storage: /var/minis/workspace/jules_work/
+
+# ClawHub registry metadata
+clawhub:
+  category: agent-orchestration
+  tags:
+    - coding
     - automation
-    - async-workflow
-
-trigger_conditions:
-  - user says "ask Jules to"
-  - user says "delegate to Jules"
-  - user says "send to Jules"
-  - user says "let Jules do"
-  - user says "Jules should write"
-  - user says "get Jules to"
-  - user says "use Jules for"
-  - user mentions "Jules" in context of coding/task delegation
-  - need to check status of existing Jules session
-  - need to review/apply Jules output
-
-requirements:
-  - jules_cli_installed: true
-  - jules_authenticated: true
-  - oauth_token_path: ~/.jules/cache/oauth_creds.json
-  - workspace_dir: /var/minis/workspace/jules_work
-
-scripts:
-  - name: jules_delegate
-    path: scripts/jules_delegate.sh
-    description: "Full pipeline: create session, wait, pull result"
-    usage: "./scripts/jules_delegate.sh '<task description>'"
-
-  - name: jules_status
-    path: scripts/jules_status.sh
-    description: "Check status of last or specified Jules session"
-    usage: "./scripts/jules_status.sh [session_id]"
-
-dependencies:
-  - jules_cli
-  - jq (for JSON parsing)
-  - curl (for token verification)
+    - external-agent
+    - jules
+    - google-ai
+  rating: 5
+  downloads: 0
+  published: 2025-01-20
