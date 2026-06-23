@@ -1,4 +1,4 @@
-#!/bin/bin/sh
+#!/bin/sh
 # =============================================================================
 # Jules Delegate Script
 # =============================================================================
@@ -20,12 +20,16 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Configuration
-DESC="$1"
-REPO="${2:-Chieji/jules-subagent-skill}"
+# =============================================================================
+# Configuration (will be set after parsing args)
+# =============================================================================
+
 WORK_DIR="/var/minis/workspace/jules_work"
 POLL_INTERVAL=10
 MAX_WAIT_TIME=1800  # 30 minutes max wait
+VERBOSE=false
+DESC=""
+REPO="Chieji/jules-subagent-skill"
 
 # =============================================================================
 # Helper Functions
